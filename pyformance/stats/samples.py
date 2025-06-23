@@ -1,15 +1,45 @@
-import time
-import random
-import math
+"""
+Copyright 2014 Omer Gertel
+Copyright 2025 Inmanta
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 import heapq
+import math
+import random
+import time
+
+from .. import Clock
 from .snapshot import Snapshot
 
 DEFAULT_SIZE = 1028
 DEFAULT_ALPHA = 0.015
 
 
-class ExpDecayingSample(object):
+# TODO: do I ABC this, may cpst us a few % performance??
+class Sample:
+    def clear(self) -> None:
+        raise NotImplementedError()
 
+    def update(self, value: float) -> None:
+        raise NotImplementedError()
+
+    def get_snapshot(self) -> Snapshot:
+        raise NotImplementedError()
+
+
+class ExpDecayingSample(Sample):
     """
     An exponentially-decaying random sample of longs. Uses Cormode et al's
     forward-decaying priority reservoir sampling method to produce a
@@ -24,7 +54,7 @@ class ExpDecayingSample(object):
 
     RESCALE_THREASHOLD = 3600.0  # 1 hour
 
-    def __init__(self, size=DEFAULT_SIZE, alpha=DEFAULT_ALPHA, clock=time):
+    def __init__(self, size: int = DEFAULT_SIZE, alpha: float = DEFAULT_ALPHA, clock: Clock = time) -> None:
         """
         Creates a new L{ExponentiallyDecayingSample}.
 
@@ -44,17 +74,17 @@ class ExpDecayingSample(object):
         self.alpha = alpha
         self.clear()
 
-    def clear(self):
-        self.values = {}
-        self.priorities = []
+    def clear(self) -> None:
+        self.values: dict[float, float] = {}
+        self.priorities: list[float] = []
         self.counter = 0
         self.start_time = self.clock.time()
         self.next_time = self.clock.time() + ExpDecayingSample.RESCALE_THREASHOLD
 
-    def get_size(self):
+    def get_size(self) -> int:
         return self.counter if self.counter < self.size else self.size
 
-    def update(self, value):
+    def update(self, value: float) -> None:
         """
         Adds a value to the sample.
 
@@ -83,16 +113,16 @@ class ExpDecayingSample(object):
             else:
                 heapq.heappush(self.priorities, first)
 
-    def _rescale_if_necessary(self):
+    def _rescale_if_necessary(self) -> None:
         if self.clock.time() >= self.next_time:
             self._rescale()
 
-    def _rescale(self):
+    def _rescale(self) -> None:
         self.next_time = self.clock.time() + ExpDecayingSample.RESCALE_THREASHOLD
         old_start_time = self.start_time
         self.start_time = self.clock.time()
         new_values = {}
-        new_priorities = []
+        new_priorities: list[float] = []
         for key, val in self.values.items():
             priority = key * math.exp(-self.alpha * (self.start_time - old_start_time))
             new_values[priority] = val
@@ -101,22 +131,21 @@ class ExpDecayingSample(object):
         self.priorities = new_priorities
         self.counter = len(self.values)
 
-    def _weight(self, value):
+    def _weight(self, value: float) -> float:
         return math.exp(self.alpha * value)
 
-    def get_snapshot(self):
+    def get_snapshot(self) -> Snapshot:
         return Snapshot(self.values.values())
 
 
-class SlidingTimeWindowSample(object):
-
+class SlidingTimeWindowSample(Sample):
     """
     A sample of measurements made in a sliding time window.
     """
 
     DEFAULT_WINDOW = 300
 
-    def __init__(self, window=DEFAULT_WINDOW, clock=time):
+    def __init__(self, window: int = DEFAULT_WINDOW, clock: Clock = time) -> None:
         """Creates a SlidingTimeWindowSample.
 
         :param window: the length of the time window in seconds
@@ -127,17 +156,17 @@ class SlidingTimeWindowSample(object):
         self.clock = clock
         self.clear()
 
-    def clear(self):
-        self.values = []
+    def clear(self) -> None:
+        self.values: list[tuple[float, float]] = []
 
-    def _trim(self):
+    def _trim(self) -> None:
         deadline = self.clock.time() - self.window
         while self.values and self.values[0][0] < deadline:
             heapq.heappop(self.values)
 
-    def update(self, value):
+    def update(self, value: float) -> None:
         heapq.heappush(self.values, (self.clock.time(), value))
 
-    def get_snapshot(self):
+    def get_snapshot(self) -> Snapshot:
         self._trim()
         return Snapshot(x[1] for x in self.values)

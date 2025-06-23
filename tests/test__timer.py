@@ -1,22 +1,61 @@
+"""
+Copyright 2014 Omer Gertel
+Copyright 2025 Inmanta
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 from pyformance.meters import Timer
-from tests import TimedTestCase
 
 
-class TimerTestCase(TimedTestCase):
-    def setUp(self):
-        super(TimerTestCase, self).setUp()
-        self.timer = Timer()
+def test__start_stop_clear(clock):
+    timer = Timer(clock=clock)
 
-    def tearDown(self):
-        super(TimerTestCase, self).tearDown()
+    context = timer.time()
+    clock.add(1)
+    context.stop()
 
-    def test__start_stop_clear(self):
-        context = self.timer.time()
-        self.clock.add(1)
-        context.stop()
+    assert timer.get_count() == 1
+    assert timer.get_max() == 1
+    assert timer.get_min() == 1
+    assert timer.get_mean() == 1
+    assert timer.get_sum() == 1
+    assert timer.get_mean_rate() == 1
 
-        self.assertEqual(self.timer.get_count(), 1)
+    context = timer.time()
+    clock.add(2)
+    context.stop()
 
-        self.timer.clear()
+    assert timer.get_count() == 2
+    assert timer.get_max() == 2
+    assert timer.get_min() == 1
+    assert timer.get_mean() == 1.5
+    assert timer.get_snapshot().get_median() == 1.5
+    assert timer.get_sum() == 3
+    assert timer.get_mean_rate() == 2.0 / 3
 
-        self.assertEqual(self.timer.get_count(), 0)
+    context = timer.time()
+    clock.add(1)
+    context.stop()
+
+    assert timer.get_count() == 3
+    assert timer.get_max() == 2
+    assert timer.get_min() == 1
+    assert timer.get_mean() == 4.0 / 3
+    assert timer.get_snapshot().get_median() == 1
+    assert timer.get_sum() == 4
+    assert timer.get_mean_rate() == 0.75
+
+    timer.clear()
+
+    assert timer.get_count() == 0

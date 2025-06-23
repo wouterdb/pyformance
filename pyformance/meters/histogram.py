@@ -1,16 +1,44 @@
-import time
+"""
+Copyright 2014 Omer Gertel
+Copyright 2025 Inmanta
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 import math
+import time
 from threading import Lock
-from ..stats.samples import ExpDecayingSample, DEFAULT_SIZE, DEFAULT_ALPHA
+
+from .. import Clock
+from ..stats.samples import DEFAULT_ALPHA, DEFAULT_SIZE, ExpDecayingSample, Sample
+from ..stats.snapshot import Snapshot
 
 
 class Histogram(object):
-
     """
     A metric which calculates the distribution of a value.
     """
 
-    def __init__(self, size=DEFAULT_SIZE, alpha=DEFAULT_ALPHA, clock=time, sample=None):
+    counter: float  # Would be expected to be int?
+    max: float
+    min: float
+    sum: float
+    var: tuple[float, float]
+    sample: Sample
+
+    def __init__(
+        self, size: int = DEFAULT_SIZE, alpha: float = DEFAULT_ALPHA, clock: Clock = time, sample: Sample | None = None
+    ) -> None:
         """
         Creates a new instance of a L{Histogram}.
         """
@@ -22,7 +50,7 @@ class Histogram(object):
         self.sample = sample
         self.clear()
 
-    def add(self, value):
+    def add(self, value: float) -> None:
         """
         Add value to histogram
 
@@ -36,7 +64,7 @@ class Histogram(object):
             self.sum = self.sum + value
             self._update_var(value)
 
-    def clear(self):
+    def clear(self) -> None:
         "reset histogram to initial state"
         with self.lock:
             self.sample.clear()
@@ -44,52 +72,52 @@ class Histogram(object):
             self.max = -2147483647.0
             self.min = 2147483647.0
             self.sum = 0.0
-            self.var = [-1.0, 0.0]
+            self.var = (-1.0, 0.0)
 
-    def get_count(self):
+    def get_count(self) -> float:
         "get current value of counter"
         return self.counter
 
-    def get_sum(self):
+    def get_sum(self) -> float:
         "get current sum"
         return self.sum
 
-    def get_max(self):
+    def get_max(self) -> float:
         "get current maximum"
         return self.max
 
-    def get_min(self):
+    def get_min(self) -> float:
         "get current minimum"
         return self.min
 
-    def get_mean(self):
+    def get_mean(self) -> float:
         "get current mean"
         if self.counter > 0:
             return self.sum / self.counter
         return 0
 
-    def get_stddev(self):
+    def get_stddev(self) -> float:
         "get current standard deviation"
         if self.counter > 0:
             return math.sqrt(self.get_var())
         return 0
 
-    def get_var(self):
+    def get_var(self) -> float:
         "get current variance"
         if self.counter > 1:
             return self.var[1] / (self.counter - 1)
         return 0
 
-    def get_snapshot(self):
+    def get_snapshot(self) -> Snapshot:
         "get snapshot instance which holds the percentiles"
         return self.sample.get_snapshot()
 
-    def _update_var(self, value):
+    def _update_var(self, value: float) -> None:
         old_m, old_s = self.var
-        new_m, new_s = [0.0, 0.0]
+        new_m, new_s = (0.0, 0.0)
         if old_m == -1:
             new_m = value
         else:
             new_m = old_m + ((value - old_m) / self.counter)
             new_s = old_s + ((value - old_m) * (value - new_m))
-        self.var = [new_m, new_s]
+        self.var = (new_m, new_s)

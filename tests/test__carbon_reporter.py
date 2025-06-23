@@ -1,4 +1,5 @@
-from six import BytesIO, PY3
+from io import BytesIO
+
 from pyformance import MetricsRegistry
 from pyformance.reporters.carbon_reporter import CarbonReporter
 from tests import TimedTestCase
@@ -82,9 +83,7 @@ class TestCarbonReporter(TimedTestCase):
                 "hist.min 1 2",
                 "hist.95_percentile 512 2",
                 "hist.75_percentile 160.0 2",
-                "hist.std_dev 164.94851048466944 2"
-                if PY3
-                else "hist.std_dev 164.948510485 2",
+                "hist.std_dev 164.94851048466944 2",
                 "hist.max 512 2",
                 "hist.avg 102.3 2",
                 "m1.count 1.0 2",

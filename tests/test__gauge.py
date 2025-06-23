@@ -1,19 +1,28 @@
+"""
+Copyright 2014 Omer Gertel
+Copyright 2025 Inmanta
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 from pyformance.meters import CallbackGauge
-from tests import TimedTestCase
 
 
-class CallbackGaugeTestCase(TimedTestCase):
-    def setUp(self):
-        super(CallbackGaugeTestCase, self).setUp()
-        self._value = None
-        self.gauge = CallbackGauge(self._get_val)
+def test_gauge():
+    value = 123
 
-    def tearDown(self):
-        super(CallbackGaugeTestCase, self).tearDown()
+    def test_callback() -> int:
+        return value
 
-    def _get_val(self):
-        return self._value
-
-    def test__value(self):
-        self._value = 123
-        self.assertEqual(self.gauge.get_value(), self._value)
+    gauge = CallbackGauge(test_callback)
+    assert gauge.get_value() == 123

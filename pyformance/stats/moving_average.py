@@ -1,9 +1,27 @@
+"""
+Copyright 2014 Omer Gertel
+Copyright 2025 Inmanta
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 import math
 import time
 
+from pyformance import Clock
+
 
 class ExpWeightedMovingAvg(object):
-
     """
     An exponentially-weighted moving average.
     """
@@ -11,7 +29,7 @@ class ExpWeightedMovingAvg(object):
     INTERVAL = 5.0  # seconds
     SECONDS_PER_MINUTE = 60.0
 
-    def __init__(self, period, interval=INTERVAL, clock=time):
+    def __init__(self, period: int, interval: float = INTERVAL, clock: Clock = time) -> None:
         """
         Create a new EWMA with a specific smoothing constant.
 
@@ -24,21 +42,21 @@ class ExpWeightedMovingAvg(object):
         self.clock = clock
         self.uncounted = 0.0
         self.interval = interval
-        self.rate = -1
+        self.rate: float = -1.0
         self.period = period * ExpWeightedMovingAvg.SECONDS_PER_MINUTE
         self.last_tick = self.clock.time()
 
-    def get_rate(self):
+    def get_rate(self) -> float:
         if self.clock.time() - self.last_tick >= self.interval:
             self.tick()
         if self.rate >= 0:
             return self.rate
         return 0
 
-    def add(self, value):
+    def add(self, value: float) -> None:
         self.uncounted += value
 
-    def tick(self):
+    def tick(self) -> None:
         """
         Mark the passage of time and decay the current rate accordingly.
         """
@@ -58,10 +76,10 @@ class ExpWeightedMovingAvg(object):
 
         self.last_tick = now
 
-    def _alpha(self, interval):
+    def _alpha(self, interval: float) -> float:
         """
         Calculate the alpha based on the time since the last tick. This is
-        necessary because a single threaded Python program loses precision  
+        necessary because a single threaded Python program loses precision
         under high load, so we can't assume a consistant I{EWMA._interval}.
 
         :type interval: C{float}
